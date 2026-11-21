@@ -18,7 +18,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
           cache-dependency-path: mon-app/package-lock.json   # ← Même nom ici
 
       - uses: actions/setup-java@v4
