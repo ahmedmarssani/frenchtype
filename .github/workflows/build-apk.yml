@@ -28,9 +28,10 @@ jobs:
           bun run build
           bunx cap sync android
 
-      - name: Build Debug & Release APK
+           - name: Build Debug & Release APK
         run: |
           cd android
+          chmod +x gradlew
           ./gradlew assembleDebug assembleRelease
 
       - name: Upload APK artifacts
