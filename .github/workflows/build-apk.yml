@@ -5,10 +5,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: mon-app   # ← Mets ici le nom de TON dossier
-
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -18,7 +14,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache-dependency-path: mon-app/package-lock.json   # ← Même nom ici
 
       - uses: actions/setup-java@v4
         with:
@@ -26,7 +21,7 @@ jobs:
           java-version: '21'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build web assets & sync Capacitor
         run: |
@@ -38,9 +33,10 @@ jobs:
           cd android
           ./gradlew assembleDebug assembleRelease
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: frenchtype-android-apk
           path: |
-            mon-app/android/app/build/outputs/apk/debug/app-debug.apk
-            mon-app/android/app/build/outputs/apk/release/app-release-unsigned.apk
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
