@@ -1,0 +1,265 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #FAF9F6;
+  --bg-elevated: #F2F1EC;
+  --glass: rgba(255, 255, 255, 0.74);
+  --glass-strong: rgba(255, 255, 255, 0.88);
+  --glass-subtle: rgba(243, 244, 248, 0.68);
+  --glass-highlight: rgba(255, 255, 255, 0.94);
+  --border: rgba(20, 22, 26, 0.08);
+  --border-strong: rgba(79, 109, 245, 0.34);
+  --tx: #14161A;
+  --sub: #575F6E;
+  --main: #4F6DF5;
+  --main-fg: #FFFFFF;
+  --accent-violet: #7C5CFC;
+  --accent-soft: rgba(79, 109, 245, 0.12);
+  --err: #D93848;
+  --err-bg: rgba(217, 56, 72, 0.10);
+  --up: #15803D;
+  --up-bg: rgba(21, 128, 61, 0.10);
+  --shadow-glass: 0 10px 30px -12px rgba(20, 24, 40, 0.10), 0 2px 8px -2px rgba(20, 24, 40, 0.05);
+  --shadow-floating: 0 20px 44px -14px rgba(20, 24, 40, 0.16), 0 4px 12px -2px rgba(79, 109, 245, 0.08);
+  --shadow-dock: 0 16px 38px -10px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.06);
+
+  --lh: 42px;
+  --word-fs: 25px;
+
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+:root[data-theme="dark"] {
+  --bg: #0E1117;
+  --bg-elevated: #161B25;
+  --glass: rgba(24, 29, 42, 0.72);
+  --glass-strong: rgba(30, 36, 52, 0.86);
+  --glass-subtle: rgba(255, 255, 255, 0.05);
+  --glass-highlight: rgba(255, 255, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.11);
+  --border-strong: rgba(139, 156, 255, 0.42);
+  --tx: #F4F6FA;
+  --sub: #9AA3B5;
+  --main: #7B93FF;
+  --main-fg: #0B1020;
+  --accent-violet: #A78BFA;
+  --accent-soft: rgba(123, 147, 255, 0.16);
+  --err: #FB7185;
+  --err-bg: rgba(251, 113, 133, 0.15);
+  --up: #4ADE80;
+  --up-bg: rgba(74, 222, 128, 0.15);
+  --shadow-glass: 0 14px 34px -12px rgba(0, 0, 0, 0.50), 0 2px 10px -2px rgba(0, 0, 0, 0.30);
+  --shadow-floating: 0 24px 48px -14px rgba(0, 0, 0, 0.65), 0 4px 16px -2px rgba(123, 147, 255, 0.12);
+  --shadow-dock: 0 18px 40px -10px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 599px) {
+  :root {
+    --lh: 36px;
+    --word-fs: 21px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--tx);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Soft iOS 26 pastel atmospheric background canvas */
+.lg-canvas {
+  position: relative;
+  min-height: 100dvh;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(65% 45% at 10% 0%, rgba(147, 197, 253, 0.30) 0%, transparent 70%),
+    radial-gradient(55% 45% at 92% 12%, rgba(196, 181, 253, 0.28) 0%, transparent 70%),
+    radial-gradient(50% 45% at 50% 100%, rgba(165, 180, 252, 0.16) 0%, transparent 70%);
+  background-attachment: fixed;
+}
+
+:root[data-theme="dark"] .lg-canvas {
+  background-image:
+    radial-gradient(60% 45% at 12% 0%, rgba(79, 109, 245, 0.18) 0%, transparent 70%),
+    radial-gradient(50% 45% at 90% 12%, rgba(139, 92, 246, 0.16) 0%, transparent 70%),
+    radial-gradient(50% 40% at 50% 100%, rgba(56, 189, 248, 0.09) 0%, transparent 70%);
+}
+
+/* Liquid Glass surface primitives */
+.lg-surface {
+  background-color: var(--glass);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 0 var(--glass-highlight), var(--shadow-glass);
+}
+
+.lg-surface-strong {
+  background-color: var(--glass-strong);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 0 var(--glass-highlight), var(--shadow-floating);
+}
+
+.lg-surface-subtle {
+  background-color: var(--glass-subtle);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 0 var(--glass-highlight);
+}
+
+.lg-dock {
+  background-color: var(--glass-strong);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 0 var(--glass-highlight), var(--shadow-dock);
+}
+
+.lg-press {
+  transition:
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 150ms ease;
+}
+
+.lg-press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Accessible focus ring */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--main);
+  outline-offset: 2px;
+}
+
+/* Skeleton shimmer */
+.lg-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--glass-subtle);
+  border: 1px solid var(--border);
+}
+
+.lg-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--glass-highlight) 50%,
+    transparent 100%
+  );
+  animation: lg-shimmer 1.4s infinite ease-in-out;
+}
+
+@keyframes lg-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Page transition reveal */
+.lg-page-enter {
+  animation: lg-fade-slide 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes lg-fade-slide {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.font-mono-typing {
+  font-family: var(--font-mono);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.words-viewport {
+  font-family: var(--font-mono);
+  font-size: var(--word-fs);
+  line-height: var(--lh);
+  height: calc(var(--lh) * 3);
+  overflow-y: hidden;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.caret-bar {
+  position: absolute;
+  width: 2.5px;
+  height: calc(var(--lh) * 0.72);
+  background: linear-gradient(180deg, var(--main), var(--accent-violet));
+  border-radius: 999px;
+  transition: left 75ms ease-out, top 75ms ease-out;
+  animation: caret-blink 1s infinite;
+  pointer-events: none;
+}
+
+@keyframes caret-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret-bar,
+  .lg-skeleton::after,
+  .lg-page-enter,
+  .lg-press {
+    animation: none;
+    transition: none;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+}

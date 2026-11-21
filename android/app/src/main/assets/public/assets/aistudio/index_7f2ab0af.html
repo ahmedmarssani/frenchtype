@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>frenchtype — tape et apprends le français</title>
+</head>
+<body>
+<main>
+<header>
+  <div class="logo">frenchtype<small>tape vite · écris juste · apprends le français</small></div>
+  <div class="top"><span class="o on" id="tabT">tester</span> · <span class="o" id="tabD">suivi</span> · <span id="top"></span></div>
+</header>
+
+<div class="bar" id="bar1"></div>
+<div class="bar" id="bar2"></div>
+<div class="bar" id="bar3" style="display:none"></div>
+<div id="msg"></div>
+
+<div id="test">
+  <div id="live"></div>
+  <div id="wrap" class="blur"><div id="words"><div id="caret"></div></div><div id="hint">cliquez ici et commencez à taper</div>
+    <input id="inp" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+  <div class="hint2"><kbd>tab</kbd> recommencer · clique sur un mot pour sa traduction (hors-ligne) · l’accent compte si l’option « accents » est activée (é ≠ e)</div>
+</div>
+
+<div id="res"></div>
+<div id="tr"></div>
+<div id="dash"></div>
+<div class="hint2" style="margin-top:40px">thème : <span class="o" id="thbtn"></span></div>
+<div id="thm"><div id="thbox"><input id="thq" placeholder="Thème…" autocomplete="off" spellcheck="false"><div id="thl"></div></div></div>
+</main>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

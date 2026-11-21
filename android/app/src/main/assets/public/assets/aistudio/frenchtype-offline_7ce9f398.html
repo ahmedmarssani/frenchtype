@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>frenchtype — tape et apprends le français</title>
+<style>
+:root{--bg:#323437;--main:#e2b714;--sub:#646669;--tx:#d1d0c5;--err:#ca4754;--card:#2c2e31;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root[data-theme="light"]{--bg:#e1e1e3;--main:#2b2b2c;--sub:#889;--tx:#2b2b2c;--err:#d33;--card:#d4d4d7}
+:root[data-theme="ocean"]{--bg:#0f2438;--main:#4fd1c5;--sub:#4a6a86;--tx:#cfe6f5;--err:#ff6b81;--card:#132d46}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 "Roboto Mono",ui-monospace,Menlo,Consolas,monospace;min-height:100vh}
+main{max-width:1000px;margin:0 auto;padding:20px 16px}
+header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.logo{font-size:26px;color:var(--main);font-weight:700}.logo small{color:var(--sub);font-size:12px;display:block;font-weight:400}
+.top{color:var(--sub);font-size:13px}.top b{color:var(--tx)}
+.bar{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;background:var(--card);border-radius:10px;padding:8px 14px;margin:6px auto;width:fit-content;max-width:100%;font-size:13px}
+.bar span.g{display:flex;gap:10px;align-items:center}.bar .sep{width:4px;border-radius:2px;background:var(--bg)}
+.o{cursor:pointer;color:var(--sub);user-select:none}.o:hover{color:var(--tx)}.o.on{color:var(--main)}
+select{background:var(--bg);color:var(--tx);border:0;border-radius:6px;padding:2px 6px;font:inherit}
+#live{height:34px;color:var(--main);font-size:24px;margin:26px 0 6px}
+#wrap{position:relative;cursor:text}
+#words{position:relative;font-size:26px;line-height:42px;height:126px;overflow:hidden;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0 14px;color:var(--sub);transition:opacity .15s}
+#wrap.blur #words{opacity:.25}
+#hint{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--tx);pointer-events:none}
+#wrap.blur #hint{display:flex}
+.w{position:relative;white-space:nowrap}.w.wrong{border-bottom:2px solid var(--err)}
+.ok{color:var(--tx)}.bad{color:var(--err)}.extra{color:#7e2a33}
+.bad.acc{color:var(--main);text-decoration:underline}
+#caret{position:absolute;width:2px;height:30px;background:var(--main);border-radius:1px;transition:left .08s,top .08s;animation:bl 1s infinite}
+@keyframes bl{50%{opacity:.2}}
+#inp{position:absolute;opacity:0;left:0;top:0;width:1px;height:1px}
+.hint2{text-align:center;color:var(--sub);font-size:13px;margin-top:30px}
+kbd{background:var(--card);padding:1px 6px;border-radius:4px;color:var(--tx)}
+#res{display:none}
+.big{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-end;margin:10px 0}
+.big div div:first-child{color:var(--sub);font-size:18px}.big .v{color:var(--main);font-size:56px;line-height:1.05}.big .s{font-size:34px;color:var(--main)}
+.sm{display:flex;gap:26px;flex-wrap:wrap;color:var(--sub);margin:8px 0}.sm b{display:block;color:var(--main);font-size:22px}
+svg.gr{width:100%;height:150px;background:var(--card);border-radius:10px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+button{font:inherit;background:var(--card);color:var(--tx);border:0;border-radius:8px;padding:9px 14px;cursor:pointer}
+button:hover{background:var(--tx);color:var(--bg)}button.p{background:var(--main);color:var(--bg)}button:disabled{opacity:.5}
+.chip{display:inline-block;background:var(--card);border-radius:6px;padding:2px 9px;margin:3px 6px 3px 0}
+.chip i{color:var(--err);font-style:normal}
+.cards{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-top:10px}
+.cd{background:var(--card);border-radius:10px;padding:12px}.cd h4{margin:0 0 4px;color:var(--main);font-size:18px}.cd p{margin:3px 0;font-size:14px}.cd .m{color:var(--sub)}
+#dash{display:none}.hero{display:flex;gap:24px;align-items:center;flex-wrap:wrap;background:var(--card);border-radius:12px;padding:16px;margin:10px 0}.hero .v{font-size:56px;color:var(--main);line-height:1}
+.kp{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin:10px 0}.kp>div{background:var(--card);border-radius:10px;padding:12px}.kp b{display:block;color:var(--main);font-size:24px}.kp span{color:var(--sub);font-size:12px}.kp i{font-style:normal;font-size:13px;margin-left:6px}
+.pb{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin:4px 0 10px}.pb i{display:block;height:100%;background:var(--main)}
+.gl{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;width:100%}.gl input{width:70px;background:var(--bg);color:var(--tx);border:0;border-radius:6px;padding:4px 6px;font:inherit}
+.up{color:#4caf50}.dn{color:var(--err)}
+#tr{display:none;position:fixed;z-index:9;background:var(--card);color:var(--tx);border:1px solid var(--main);border-radius:10px;padding:10px 14px;max-width:240px;font-size:15px;box-shadow:0 6px 20px #0006}#tr b{color:var(--main);font-size:18px}#tr .m{color:var(--tx);margin-top:4px}
+#words .w:hover{color:var(--tx);cursor:help}
+#msg{text-align:center;color:var(--main);min-height:22px;margin:8px 0}
+.lbl{color:var(--sub);font-size:13px;margin-top:14px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="logo">frenchtype<small>tape vite · écris juste · apprends le français</small></div>
+  <div class="top"><span class="o on" id="tabT">tester</span> · <span class="o" id="tabD">suivi</span> · <span id="top"></span></div>
+</header>
+
+<div class="bar" id="bar1"></div>
+<div class="bar" id="bar2"></div>
+<div class="bar" id="bar3" style="display:none"></div>
+<div id="msg"></div>
+
+<div id="test">
+  <div id="live"></div>
+  <div id="wrap" class="blur"><div id="words"><div id="caret"></div></div><div id="hint">cliquez ici et commencez à taper</div>
+    <input id="inp" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+  <div class="hint2"><kbd>tab</kbd> recommencer · clique sur un mot pour sa traduction (hors-ligne) · l’accent compte si l’option « accents » est activée (é ≠ e)</div>
+</div>
+
+<div id="res"></div>
+<div id="tr"></div>
+<div id="dash"></div>
+<div class="hint2" style="margin-top:40px">thème : <span class="o" data-t="serika">sombre</span> · <span class="o" data-t="light">clair</span> · <span class="o" data-t="ocean">océan</span></div>
+</main>
+
+<script>
+const WL=("le la les un une des de du et est à dans pour que qui ne pas ce il elle nous vous ils sur avec son sont mais comme tout plus faire dire pouvoir aller vouloir savoir falloir venir prendre donner trouver porter mettre passer jour temps homme femme enfant main chose monde vie année maison ville eau fois matin soir semaine mois être avoir voir où déjà très après été école père mère frère élève problème système qualité usine défaut peinture pièce surface vérifier contrôle température humidité épaisseur couche vernis apprendre comprendre français écrire lire parler travail équipe réunion machine production même aussi alors depuis pendant toujours jamais beaucoup peu trop encore souvent parfois ensemble différent important possible nécessaire difficile facile rapide lentement sécurité propre sale plastique couleur brillant mat rugueux lisse rayure bulle coulure poussière nettoyage séchage cabine four pistolet pression débit viscosité mélange durcisseur solvant réparer vérification résultat contrôler améliorer réduire éviter répondre demander écouter regarder arriver commencer terminer première deuxième dernier prochain hôpital café marché bientôt hier demain aujourd’hui ça là ici chez entre sans sous vers contre selon malgré parce que quand lorsque pourquoi comment combien quel quelle ceux celle leur notre votre leurs mes tes ses").split(" ");
+const D={};("le:el (article masculin)|la:el (article féminin)|les:el (article pluriel)|un:wa7ed|une:wa7da|des:article pluriel, ma yetterjemch|de:men / mte3|du:mte3 el|et:w|est:howa / hiya (verbe être)|à:l / fi|dans:fi|pour:bech / 3ala jal|que:elli / ki|qui:elli / chkoun|ne:négation : ne … pas|pas:ma … ch (négation)|ce:hedha|il:houwa|elle:hiya|nous:e7na|vous:intouma|ils:houma|sur:3la|avec:m3a|son:mte3ou / mte3ha|sont:homa (verbe être)|mais:lakin|comme:kima|tout:koll|plus:akther|faire:ya3mel|dire:yeqoul|pouvoir:yenjem|aller:yemchi|vouloir:yheb|savoir:ya3ref|falloir:lezem|venir:yji|prendre:ya5ou|donner:ya3ti|trouver:yelqa|porter:ye7mel|mettre:y7ot|passer:yfout|jour:nhar|temps:wa9t / jaw|homme:rajel|femme:mra|enfant:tefl|main:yed|chose:chay|monde:3alem / ness|vie:7aya|année:3am|maison:dar|ville:mdina|eau:ma|fois:mara|matin:sbe7|soir:3chiya|semaine:jom3a (7 ayyem)|mois:chahar|être:ykoun|avoir:yamlek|voir:ychouf|où:win|déjà:men9bal / dé7a|très:barcha|après:ba3d|été:koun (passé de être) / sif|école:madrasa|père:bou / baba|mère:omm / mama|frère:5ou|élève:tilmidh|problème:mochkla|système:nidham|qualité:jawda|usine:masna3|défaut:3ayb|peinture:sibagha / bouya|pièce:9it3a|surface:sath|vérifier:yet2akkad|contrôle:mourakba|température:daraja mte3 el 7rara|humidité:roTouba|épaisseur:sama9a|couche:tabqa|vernis:vernis / talé|apprendre:yet3allem|comprendre:yefhem|français:faransawi|écrire:yekteb|lire:yeqra|parler:yahki|travail:khedma|équipe:fari9|réunion:ijtima3|machine:makina|production:intaj|même:nafs / 3ayn|aussi:zeda|alors:yaw / ya3ni|depuis:men|pendant:wa9t / khilél|toujours:dima|jamais:abadan / 3omri|beaucoup:barcha|peu:chwaya|trop:barcha zeyed|encore:zeda / mazel|souvent:barcha marrat|parfois:marrat|ensemble:m3a b3adhna|différent:mokhtalef|important:mouhim|possible:momken|nécessaire:dharouri|difficile:s3ib|facile:sahl|rapide:sari3|lentement:bchwaya|sécurité:amen / salama|propre:nDhif|sale:wsekh|plastique:plastik|couleur:lawn|brillant:lami3|mat:mat (bla lam3a)|rugueux:khchin|lisse:amlas|rayure:kharcha|bulle:fa9a3a|coulure:sayl (el peinture yenzel)|poussière:ghobra|nettoyage:tandhif|séchage:tajfif|cabine:kabina|four:forn|pistolet:pistolé (msaddas)|pression:dhaght|débit:tadaffoq / debit|viscosité:lozouja|mélange:khalta|durcisseur:mousalleb (durcisseur)|solvant:moudhib (diluant)|réparer:yesla7|vérification:ta2kid|résultat:natija|contrôler:yraqeb|améliorer:ye7assen|réduire:yna9es|éviter:yetjannab|répondre:yjaweb|demander:yes2el / yTlob|écouter:yesma3|regarder:yetfarraj / ychouf|arriver:youSal|commencer:yebda|terminer:yekhles|première:lowla|deuxième:ethenya|dernier:e5er|prochain:jey|hôpital:sbitar|café:9ahwa|marché:souq|bientôt:9rib|hier:el bare7|demain:ghodwa|aujourd’hui:lyoum|ça:hedha|là:hna / hnéka|ici:hna|chez:3and|entre:bin|sans:bla|sous:ta7t|vers:lil / nahw|contre:dhed|selon:7asb|malgré:raghm|parce:5ater (parce que)|quand:waqtech / waqt|lorsque:waqt elli|pourquoi:3lech|comment:kifech|combien:9addech|quel:ayyé (masculin)|quelle:ayyé (féminin)|ceux:elli (houma)|celle:elli (hiya)|leur:mte3hom|notre:mte3na|votre:mte3kom|leurs:mte3hom|mes:mte3i|tes:mte3ek|ses:mte3ou|manger:yekel|boire:yochrob|dormir:yarqed|marcher:yetmacha|courir:yjri|ouvrir:yeftah|fermer:ysakker|acheter:yechri|vendre:yebi3|payer:yekhlass|chercher:ydawwer|attendre:yestanna|changer:y8ayyer|choisir:yekhtar|couper:y9ass|casser:yekssar|tomber:yteh|monter:yetla3 / yrakkeb|descendre:yenzel|entrer:yodkhol|sortir:yekhrej|rester:yeb9a|partir:yetla9 / yemchi|revenir:yarja3|appeler:y3ayet / ynadi|aider:y3awen|utiliser:yesta3mel|essayer:yjarreb|oublier:yensa|penser:yfakker|croire:ysaddeq|montrer:yewerri|expliquer:yfassar|préparer:y7addher|nettoyer:ynadhdhef|peindre:ysabbegh / ybouyi|sécher:yjaffef|mesurer:yqiss|compter:y7seb|noter:yseggel|ranger:yrattib|remplir:ymalli|vider:yfarregh|serrer:yechedd|tourner:yedour|tirer:yjbed|pousser:yedfa3|lever:yrafa3|baisser:yhabbet|arrêter:y7abbes|continuer:ykammel|réussir:yenja7|échouer:yfachel|gagner:yerbah|perdre:yokhsar|risquer:yghamer|jouer:yel3ab|aimer:ye7eb|détester:yekrah|habiter:yskon|vivre:y3ich|rire:yedh7ak|pleurer:yebki|chanter:yghanni|danser:yre9es|entendre:ysma3|sentir:yechem|toucher:ylemes|rencontrer:yetla9a|inviter:y3azzem|accepter:ye9bel|refuser:yrefedh|permettre:yseme7|interdire:ymna3|cacher:ykhabbi|chauffer:ysakhkhen|refroidir:ybarred|verser:ysob|mélanger:ykhalet|appliquer:ytabbeq|pulvériser:yrouch|frotter:yfrek|gratter:yjrad|polir:ylam3|durcir:yeslab|coller:ylassaq|décoller:ynezza3|démonter:yfekk|assembler:yrakkeb|installer:ynaseb|régler:yDabbet|analyser:y7allel|comparer:yqaren|enregistrer:ysajjel|envoyer:yab3ath|recevoir:yjih|télécharger:y7ammel|imprimer:ytba3|copier:yenssakh|supprimer:ymsa7|sauvegarder:ya7fedh|ouvrier:3amel|chef:chef / mas2oul|responsable:mas2oul|client:client / 7arif|fournisseur:mouzawwed|commande:commande / talab|livraison:tasleem|stock:stock / makhzoun|magasin:magasin|atelier:warcha|ligne:khatt|poste:poste el khedma|outil:ada|mesure:qiyes|norme:mi3yar|procédure:ijra2|instruction:ta3lima|document:wathiqa|rapport:taqrir|tableau:jadwel|liste:qaima|plan:plan / mokhatat|photo:soura|échantillon:3ayyena|lot:lot / dof3a|série:silsila|taux:nesba|objectif:hadaf|cause:sabab|solution:7all|action:3amal|erreur:ghalta|panne:3otl|arrêt:wa9fa|retard:ta2khir|coût:kolfa|prix:thaman|budget:mizaniya|contrat:3a9d|salaire:mahia|congé:ijaza|horaire:jadwel el 3mel|heure:sa3a|minute:da9i9a|seconde:thenya|apprêt:primaire (tabqa lowla)|laque:laque (talé)|métallisation:tghtiya bel ma3dan|masquage:ghatya bel scotch|ponçage:tan3im bel papier|dégraissage:ta2zil el dohn|flammage:7arq sat7i|plasma:plasma|adhérence:iltisaq|cloque:fa9a3a (cloque)|cratère:7ofra sghira fil peinture|pigment:pigment / sabgha|teinte:darajet el lawn|brillance:lam3an|microns:micron|jauge:jauge|retouche:retouche / tasli7|rebut:rebut / mardoud|conforme:motabeq|tolérance:tasamo7|spécification:mouwasafat|matière:madda|résine:resine|injection:7a9n|moule:qalib|support:da3em|convoyeur:tapis nagel|accrochage:ta3liq|crochet:crochet|filtre:filtre|air:hwé|ventilation:tahwiya|aspiration:chafd|gant:gant|masque:masque|lunettes:nadhdharat|casque:casque|chaussures:sabbat|blouse:blouse|attention:intibeh|danger:khatar|interdit:mamnou3|obligatoire:ijbari|pain:khobz|lait:7lib|sucre:sokkar|sel:mel7|thé:atey|poisson:7out|viande:la7m|poulet:djej|légumes:khodhra|fruit:fakiha|pomme:tof7a|tomate:tomatem|oeuf:bidha|fromage:jben|riz:rouz|pâtes:makarouna|huile:zit|couscous:keskes|repas:wejba|déjeuner:ghda|dîner:3acha|faim:jou3|soif:3atch|chaud:skhoun|froid:bared|grand:kbir|petit:sghir|long:twil|court:9sir|large:3rid|étroit:dhayeq|haut:3ali|bas:wati|lourd:thqil|léger:khfif|vide:fared|plein:ma3mer|nouveau:jdid|vieux:9dim|jeune:chab|bon:behi|mauvais:mouch behi|meilleur:a7sen|joli:7elou|beau:jmil|laid:bchi3|cher:ghali|gratuit:balach|riche:ghani|pauvre:fa9ir|content:farhan|triste:7zin|fatigué:t3eb|malade:mridh|fort:9awi|faible:dha3if|vrai:s7i7 / 7a9i9i|faux:ghalet|juste:s7i7 / 3adel|clair:wadhe7|calme:hadi|lundi:itnin|mardi:thletha (nhar)|mercredi:arb3a (nhar)|jeudi:khemis|vendredi:jom3a|samedi:sebt|dimanche:a7ad|nuit:lil|maintenant:tawa|avant:9bal|tard:mta2khar|tôt:bekri|vite:bsor3a|lent:bati2|famille:3ayla|fils:weld|fille:bent|oncle:3amm / khal|tante:khalti / 3amti|ami:sa7bi|voisin:jar|collègue:zmil|patron:patron|docteur:tbib|médecin:tbib|voiture:karhba|bus:bus|train:train|avion:tayara|route:tari9|rue:zenqa|gare:mo7atta|billet:tiket|argent:flous (money) / fidhdha|banque:banka|téléphone:telefoun|ordinateur:ordinateur|clavier:lawhat el mafatih|écran:ecran|souris:far / souris|fichier:malaf|internet:internet|message:resala|mail:email|lettre:resala / 7arf|page:safha|livre:ktab|cahier:kourras|stylo:9alam|papier:wara9|table:tawla|chaise:korsi|porte:beb|fenêtre:chebbek|chambre:ghorfa|cuisine:kouzina|salle:qa3a|bureau:maktab|jardin:jnena|mer:bahr|plage:plage|montagne:jbel|soleil:chams|pluie:chta|vent:rih|nuage:ghayma|ciel:sma|lune:9mar|étoile:njem|arbre:chajra|fleur:warda|animal:7ayawen|chat:9attous|chien:kalb|oiseau:asfour|voyage:safra|vacances:ijaza|hôtel:hotel|passeport:jawaz safar|valise:chanta|visite:ziara|pays:blad|tunisie:Tounes|france:faransa|zéro:sifr|deux:zouz|trois:thletha|quatre:arb3a|cinq:khamsa|six:setta|sept:sab3a|huit:thmenya|neuf:tes3a|dix:3achra|vingt:3ichrin|cent:mia|mille:alf|rouge:a7mar|bleu:azra9|vert:akhdhar|jaune:asfar|noir:ek7al|blanc:abyadh|gris:rmédi|rose:wardi|marron:9ahwi|tête:ras|pied:rejl|oeil:3ayn|oreille:widhn|bouche:fam|nez:khachm|dos:dhahr|coeur:9alb|santé:sa7a|douleur:waja3|médicament:dawa|pharmacie:saydaliya|ou:wala|donc:ya3ni|car:5ater|si:ken|puis:ba3d|ensuite:ba3d hakka|seulement:bark|presque:taqriban|environ:7awali|chaque:koll|autre:akher|autres:akherin|quelque:chwaya|personne:wa7ed|rien:hata chay|tous:koll el nes|bien:behi|mal:ghalet / mouch behi|mieux:a7sen|moins:a9all|assez:kefaya|vraiment:7a9i9a|oui:iyeh|non:la|merci:3aychek|bonjour:3aslema / sba7 el khir|bonsoir:msa el khir|salut:3aslema|désolé:asef|pardon:sma7ni|bienvenue:marhbe|bravo:bravo|question:souel|réponse:jaweb|exemple:mithél|mot:kelma|phrase:jomla|langue:logha|accent:accent / nabra|grammaire:qawa3ed|texte:nass|idée:fikra|sens:ma3na|exercice:tamrin|leçon:dars|test:ikhtibar|note:3alama|niveau:mostawa|progrès:ta9addom|faute:ghalta / khata2|correct:s7i7|apprentissage:ta3allom|mémoire:dhakira").split("|").forEach(x=>{const i=x.indexOf(":");D[x.slice(0,i)]=x.slice(i+1);});
+const TH={"Tout le vocabulaire pro":[]};
+["Qualité§audit:mourajaa (taftich el système)|inspection:taftich|anomalie:khalal / anomalie|écart:far9 / inhiraf|dérive:inhiraf tadrijy|réclamation:chakwa mel client|traçabilité:tatabbo3 (min win jet el pièce)|indicateur:mou2achir|amélioration:ta7sin|capabilité:qodra (capabilité el procédé)|étalonnage:dhabt el appareil|gabarit:gabarit (qyes)|rejet:rafdh|tri:fartha / tri|blocage:7ajz (el pièces)|isolement:3azl|dérogation:isti3tha2 (dérogation)|certification:chhada|exigence:talab / chart|critère:mi3yar / chart|défectueux:ma3youb|acceptable:maqboul|rejeté:marfoudh|tendance:ittijéh|défaut|conforme|tolérance|contrôle|contrôler|vérification|vérifier|rebut|retouche|norme|mesure|qualité|cause|solution|rayure|bulle|poussière|coulure|cloque|cratère|erreur|résultat|taux|échantillon",
+"Méthodes et production§gamme:gamme (marsouma mraa7el el khedma)|nomenclature:liste mta3 el pièces|chronométrage:9ias el wa9t|cycle:cycle / dawra|rendement:mardoudiya|productivité:intajiya|ergonomie:ra7et el 3amel|standardisation:tawhid / standard|optimisation:ta7sin / optimisation|gaspillage:israf / gaspillage|flux:tadaffoq / flux|goulot:nuqtet el ikhtinaq|cadence:cadence / wtira|capacité:qodra|paramètres:mou3attayat / paramètres|recette:paramètres mta3 el produit|fiche:waraqa / fiche|balancement:tawazon el khatt|implantation:tawzi3 el machines|changement:tghyir|performance:ada2|disponibilité:jahiziya|réglage:dhabt|production|ligne|poste|machine|temps|atelier|stock|outil|plan|procédure|instruction|document|norme|mesure|pièce|objectif",
+"Peinture et surface§primaire:tabqa lowla (primaire)|base:tabqa el lawn (base)|polymérisation:tajaffof kimya2i|cuisson:tabkh / cuisson|étuve:forn mte3 tasskhin|projection:rach|électrostatique:kahrabaiya sakina|robot:robot|buse:far9et el rach (buse)|tamis:ghirbel|viscosimètre:jihaz qiyes lozouja|dilution:tamdid|dépoussiérage:ta2zil el ghobra|soufflette:nafakha hawa2iya|surépaisseur:sama9a zeyda|manque:na9s|nuance:darajet lawn|spectrophotomètre:jihaz qiyes el lawn|brillancemètre:jihaz qiyes el lam3an|quadrillage:test el iltisaq (quadrillage)|arrachement:ta9la3|inclusion:7aja gharība dakhel el peinture|fibre:khayt (fibre)|silicone:silicone|contamination:talawoth|dégazage:khrouj el ghaz|ruissellement:sayl|apprêt|vernis|couche|laque|métallisation|masquage|ponçage|dégraissage|flammage|plasma|adhérence|pigment|teinte|brillance|microns|cabine|four|pistolet|pression|débit|viscosité|mélange|durcisseur|solvant|séchage|nettoyage|surface|plastique|couleur|brillant|mat|rugueux|lisse|pulvériser|appliquer|polir|frotter|gratter|coller|décoller|résine|injection|moule|matière|crochet|convoyeur|accrochage|filtre|air|jauge|épaisseur|peinture",
+"Maintenance§maintenance:siyana|préventive:wiqa2iya|corrective:i3lajiya|dépannage:tasli7 sari3|graissage:tadh7im / graissage|lubrifiant:mouzayyit|roulement:roulement|courroie:7izem (courroie)|vérin:vérin (piston)|capteur:capteur / mostach3er|automate:automate (API)|moteur:moteur|pompe:pompe|vanne:vanne|joint:joint|fuite:tasarrob|usure:talaf / ihtiraa2|vibration:ihtizaz|redémarrage:i3adet el tachghil|câble:cable|électrique:kahrabai|mécanique:mikaniki|pneumatique:hawai2i|hydraulique:hydraulique|alarme:inthar / alarme|panne|arrêt|retard|machine|outil|réparer|démonter|assembler|installer|régler|nettoyer|serrer|huile",
+"Sécurité et environnement§accident:7adeth|incident:7adith sghir|risque:khatar / risque|prévention:wiqaya|extincteur:tafayet / extincteur|évacuation:ikhla2|secours:is3af|formation:ta3lim / formation|habilitation:tarkhis (habilitation)|consigne:ta3lima / consigne|signalisation:isharat|toxique:sam|inflammable:sari3 el ichti3al|déchets:nofayet|recyclage:i3adet tadwir|bruit:dhawdha|protection:7imaya|blessure:jarh|brûlure:7arq|incendie:7ari9|alerte:inthar|urgence:isti3jel|sécurité|danger|attention|interdit|obligatoire|gant|masque|lunettes|casque|chaussures|blouse|ventilation|aspiration|propre|sale",
+"Management et réunions§ordre:tartib|agenda:jadwel a3mel|décision:qarar|priorité:awlawiya|délai:mouhla|échéance:maw3ed nihai|avancement:taqaddom|planning:planning|suivi:moutaba3a|validation:mousadaqa|approbation:moujafaqa|proposition:iqtirah|présentation:3ardh|synthèse:molakhkhas|bilan:7sab / bilan|responsabilité:mas2ouliya|collaboration:ta3awon|communication:ittisal|retour:retour (feedback)|demande:talab|ressource:mawred|effectif:3adad el 3omel|absent:ghayeb|présent:7adher|remplaçant:badil|superviseur:moucharref|direction:idara|directeur:modir|manager:manager|hiérarchie:soulta / hiérarchie|escalade:tas3id (escalade)|réunion|équipe|chef|responsable|travail|objectif|résultat|problème|solution|plan|rapport|tableau|liste|document|photo",
+"Emails et administratif§cordialement:ma3 tahiyati|veuillez:min fadhlek|destinataire:el moustalem|expéditeur:el morsel|objet:el 3onwan / objet|joint:morfaq|confirmer:y2akked|informer:yokhbir|transmettre:yballegh|solliciter:yTlob|rappel:tadhkir|accusé:accusé (ta2kid)|réception:istilem|attente:intidher|dossier:malaf|devis:3ardh thaman (devis)|facture:facture|signature:imdha2|signer:yamdhi|valider:ysaddaq|approuver:yowafe9|disponible:mawjoud|bonjour|bonsoir|merci|désolé|pardon|bienvenue|message|mail|lettre|page|fichier|document|envoyer|recevoir|copier|enregistrer|imprimer|télécharger|question|réponse",
+"Logistique§approvisionnement:tamwin|expédition:ichhen / expédition|palette:palette|chariot:3rabiya (chariot)|emballage:ta3bi2a|étiquette:bitaqa (étiquette)|code:code / ramz|inventaire:jard|rupture:inqita3 (rupture de stock)|transport:na9l|camion:camion|quai:rassif (quai)|colis:colis|entrepôt:makhzen kbir|fabrication:tasn3|lancement:tawjih / lancement|quantité:kammiya|stock|magasin|commande|livraison|fournisseur|client|lot|série",
+"Carrière et RH§entretien:mouqabala|candidat:moutaraches|embauche:tawdhif|compétence:kifaya / compétence|expérience:khibra|promotion:tarqiya|démission:istiqala|stage:stage / tadrib|diplôme:chahada (diplôme)|ingénieur:mouhandes|technicien:technicien / fanni|opérateur:3amel / opérateur|cadre:cadre / itar|gestionnaire:modir|motivation:dafi3|salaire|congé|contrat|horaire|poste|travail|équipe|apprentissage|niveau|progrès|objectif",
+"Mesures et technique§vitesse:sor3a|force:qowwa|poids:wazn|volume:7ajm|longueur:tol|largeur:3ardh|hauteur:irtifa3|diamètre:qotr|angle:zawiya|dimension:ib3ad|unité:wa7da|mètre:mitr|litre:litr|kilogramme:kilo|degré:daraja|pourcentage:nesba mi2awiya|moyenne:moutawassit|maximum:a9sa|minimum:adna|valeur:qima|chiffre:raqm|graphique:rasm bayani|température|pression|humidité|débit|épaisseur|microns|mesurer|compter|mesure|jauge|taux|tableau",
+"Vie quotidienne§maison|ville|eau|jour|matin|soir|semaine|mois|argent|banque|voiture|rue|porte|table|chaise|cuisine|chambre|bureau|jardin|téléphone|ordinateur|famille|ami|voisin|enfant|fils|fille",
+"Nourriture§pain|lait|sucre|sel|thé|café|poisson|viande|poulet|légumes|fruit|pomme|tomate|oeuf|fromage|riz|pâtes|huile|couscous|repas|déjeuner|dîner|faim|soif|manger|boire|chaud|froid",
+"Santé§tête|main|pied|oeil|oreille|bouche|nez|dos|coeur|santé|douleur|médicament|pharmacie|hôpital|docteur|médecin|malade|fatigué|fort|faible",
+"Voyage§voyage|vacances|hôtel|passeport|valise|visite|pays|tunisie|france|avion|train|bus|gare|billet|route|plage|montagne|mer|soleil|pluie|vent|partir|revenir|arriver",
+"Temps et nombres§lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|nuit|maintenant|avant|tard|tôt|vite|lent|zéro|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|vingt|cent|mille|rouge|bleu|vert|jaune|noir|blanc|gris|rose|marron",
+"Verbes essentiels§faire|dire|pouvoir|aller|vouloir|savoir|venir|prendre|donner|trouver|porter|mettre|passer|manger|boire|dormir|marcher|courir|ouvrir|fermer|acheter|vendre|payer|chercher|attendre|changer|choisir|couper|casser|tomber|monter|descendre|entrer|sortir|rester|appeler|aider|utiliser|essayer|oublier|penser|montrer|expliquer|préparer|continuer|arrêter",
+"Langue et études§mot|phrase|langue|accent|grammaire|texte|idée|sens|exercice|leçon|test|note|niveau|progrès|faute|correct|apprentissage|mémoire|question|réponse|exemple|apprendre|comprendre|écrire|lire|parler|français|école|élève|livre|cahier|stylo|papier"
+].forEach(r=>{const i=r.indexOf("§"),n=r.slice(0,i);TH[n]=r.slice(i+1).split("|").map(x=>{const j=x.indexOf(":");if(j>0){D[x.slice(0,j)]=x.slice(j+1);return x.slice(0,j);}return x;}).filter(k=>D[k]);});
+const PRO=["Qualité","Méthodes et production","Peinture et surface","Maintenance","Sécurité et environnement","Management et réunions","Emails et administratif","Logistique","Carrière et RH","Mesures et technique"];
+TH["Tout le vocabulaire pro"]=[...new Set(PRO.flatMap(n=>TH[n]))];
+Object.keys(D).forEach(k=>{if(!WL.includes(k))WL.push(k);});
+const LS="frenchtype-v1";
+let S={hist:[],pb:{},missed:{},tr:{},ok:{},goal:{tests:3,acc:95,wpm:30}};
+try{const r=localStorage.getItem(LS);if(r)Object.assign(S,JSON.parse(r));}catch(e){}
+const save=()=>{try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){}};
+const $=id=>document.getElementById(id);
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
+const strip=s=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+let O={mode:"time",val:30,src:"mots",pt:false,strict:true,lvl:"A2",theme:"quotidien",th:"Tout le vocabulaire pro"};
+let sample=null,words=[],wi=0,cur="",typed=[],started=false,t0=0,timer=null,done=false,locked=false;
+let ks=0,kok=0,rawC=0,okC=0,samples=[],sec=0,wrongW={},accE=0,aiWords=[],busy=false;
+const eq=(a,b)=>O.strict?a===b:strip(a)===strip(b);
+
+if(window.claude&&claude.use)claude.use("sample").then(s=>{sample=s;bars();}).catch(()=>{});
+const setTheme=t=>document.documentElement.setAttribute("data-theme",t);
+document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>setTheme(b.dataset.t));
+
+function opt(parent,label,on,fn){const s=el("span","o"+(on?" on":""),label);s.onclick=fn;parent.append(s);}
+function grp(bar){const g=el("span","g");bar.append(g);return g;}
+function bars(){
+  const b1=$("bar1"),b2=$("bar2"),b3=$("bar3");b1.textContent="";b2.textContent="";b3.textContent="";
+  let g=grp(b1);opt(g,"ponctuation",O.pt,()=>{O.pt=!O.pt;bars();reset();});
+  b1.append(el("span","sep"));g=grp(b1);opt(g,O.strict?"accents : exigés":"accents : ignorés",O.strict,()=>{O.strict=!O.strict;bars();reset();});
+  g=grp(b2);[["time","temps"],["words","mots"]].forEach(([k,l])=>opt(g,l,O.mode===k&&O.src!=="ia",()=>{O.mode=k;if(O.src==="ia")O.src="mots";O.val=k==="time"?30:25;bars();reset();}));
+  b2.append(el("span","sep"));g=grp(b2);(O.mode==="time"?[15,30,60,120]:[10,25,50,100]).forEach(v=>opt(g,v,O.val===v,()=>{O.val=v;bars();reset();}));
+  b2.append(el("span","sep"));g=grp(b2);
+  opt(g,"mots courants",O.src==="mots",()=>{O.src="mots";bars();reset();});
+  opt(g,"mes erreurs ("+Object.keys(S.missed).length+")",O.src==="erreurs",()=>{if(!Object.keys(S.missed).length){msg("Pas encore d’erreurs enregistrées — fais un premier test.");return;}O.src="erreurs";bars();reset();});
+  opt(g,"thèmes pro",O.src==="theme",()=>{O.src="theme";if(O.mode==="words"&&O.val<25)O.val=25;bars();reset();});
+  if(sample)opt(g,"texte IA ✨",O.src==="ia",()=>{O.src="ia";O.mode="words";bars();reset();});
+  if(O.src==="ia"){b3.style.display="";
+    let l=el("span",null,"niveau ");let s=document.createElement("select");["A1","A2","B1","B2"].forEach(v=>{const o=el("option",null,v);if(v===O.lvl)o.selected=true;s.append(o);});s.onchange=()=>{O.lvl=s.value;reset();};l.append(s);b3.append(l);
+    l=el("span",null,"thème ");s=document.createElement("select");["quotidien","usine et qualité","peinture industrielle","voyage","santé","cuisine","technologie"].forEach(v=>{const o=el("option",null,v);if(v===O.theme)o.selected=true;s.append(o);});s.onchange=()=>{O.theme=s.value;reset();};l.append(s);b3.append(l);
+    l=el("span",null,"longueur ");s=document.createElement("select");[25,50,100].forEach(v=>{const o=el("option",null,v+" mots");if(v===O.val)o.selected=true;s.append(o);});s.onchange=()=>{O.val=+s.value;reset();};l.append(s);b3.append(l);
+  }else if(O.src==="theme"){b3.style.display="";const l=el("span",null,"thème ");const s=document.createElement("select");Object.keys(TH).forEach(v=>{const o=el("option",null,v+" ("+TH[v].length+")");o.value=v;if(v===O.th)o.selected=true;s.append(o);});s.onchange=()=>{O.th=s.value;reset();};l.append(s);b3.append(l);}else b3.style.display="none";
+  const best=Object.values(S.pb).reduce((a,b)=>Math.max(a,b),0);
+  $("top").innerHTML="";const t=$("top");t.append(document.createTextNode("tests "),el("b",null,S.hist.length),document.createTextNode(" · record "),el("b",null,Math.round(best)+" mpm"));
+}
+function msg(t){$("msg").textContent=t;}
+
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+function pool(){
+  if(O.src==="theme")return TH[O.th]||WL;
+  if(O.src==="erreurs"){const k=Object.keys(S.missed),p=[];k.forEach(w=>{for(let i=0;i<Math.min(3,S.missed[w]);i++)p.push(w);});WL.slice(0,0);return p.length?p:WL;}
+  return WL;
+}
+function gen(n){
+  if(O.src==="ia")return aiWords.slice(0,n);
+  const p=pool(),out=[];let cap=true;
+  for(let i=0;i<n;i++){let w=rnd(p);
+    if(O.pt){if(cap){w=w[0].toUpperCase()+w.slice(1);cap=false;}
+      if(i===n-1||Math.random()<.12){w+=".";cap=true;}else if(Math.random()<.1)w+=",";}
+    out.push(w);}
+  return out;
+}
+
+function paint(i){
+  const d=$("words").children[i+1];if(!d)return;
+  const w=words[i],t=i<wi?typed[i]:(i===wi?cur:"");d.textContent="";
+  for(let k=0;k<w.length;k++){
+    const s=el("span",null,w[k]);
+    if(k<t.length){if(t[k]===w[k])s.className="ok";else if(!O.strict&&strip(t[k])===strip(w[k]))s.className="ok";else s.className="bad";}
+    d.append(s);}
+  for(let k=w.length;k<t.length;k++)d.append(el("span","extra",t[k]));
+  d.classList.toggle("wrong",i<wi&&!eq(t,w));
+}
+function render(){
+  const c=$("words");[...c.children].forEach(x=>{if(x.id!=="caret")x.remove();});
+  words.forEach(w=>{const d=el("div","w",w);c.append(d);});
+  c.scrollTop=0;caret();
+}
+function caret(){
+  const c=$("words"),d=c.children[wi+1],cr=$("caret");if(!d)return;
+  const k=cur.length,cn=d.children;let x,y;
+  const cb=c.getBoundingClientRect();
+  if(k<cn.length){const r=cn[k].getBoundingClientRect();x=r.left-cb.left;y=r.top-cb.top;}
+  else if(cn.length){const r=cn[cn.length-1].getBoundingClientRect();x=r.right-cb.left;y=r.top-cb.top;}
+  else{const r=d.getBoundingClientRect();x=r.left-cb.left;y=r.top-cb.top;}
+  const line=42;
+  if(y>=line*2-1){c.scrollTop+=line;y-=line;}
+  cr.style.left=x+"px";cr.style.top=(y+c.scrollTop+6)+"px";
+}
+
+async function reset(){
+  clearInterval(timer);started=false;done=false;wi=0;cur="";typed=[];ks=kok=rawC=okC=0;samples=[];sec=0;wrongW={};accE=0;
+  $("res").style.display="none";$("dash").style.display="none";$("tabT").className="o on";$("tabD").className="o";$("test").style.display="";msg("");$("live").textContent="";$("inp").value="";
+  if(O.src==="ia"){
+    locked=true;msg("L’IA écrit ton texte…");
+    const n=O.val;
+    try{
+      const r=await sample.json(`Écris un texte en français pour un apprenant arabophone tunisien de niveau ${O.lvl} sur le thème « ${O.theme} ». Environ ${n} mots, phrases simples et naturelles, avec les accents corrects, vocabulaire utile. Réponds uniquement en JSON: {"texte":"…"}`,{cache:false});
+      aiWords=String(r.texte||"").replace(/\s+/g," ").trim().split(" ").filter(Boolean);
+      if(aiWords.length<5)throw 0;
+    }catch(e){msg("L’IA n’a pas répondu. Passage aux mots courants.");O.src="mots";bars();aiWords=[];}
+    locked=false;if(O.src==="ia")msg("");
+  }
+  words=gen(O.mode==="time"?80:O.val);render();paint(0);
+  $("live").textContent=O.mode==="time"?O.val:"0/"+words.length;
+  $("inp").focus();
+}
+
+function start(){started=true;t0=Date.now();
+  timer=setInterval(()=>{sec++;const m=sec/60;samples.push({w:okC/5/m,r:rawC/5/m});
+    if(O.mode==="time"){$("live").textContent=Math.max(0,O.val-sec);if(sec>=O.val)finish();}
+    else $("live").textContent=wi+"/"+words.length+" · "+Math.round(okC/5/m)+" mpm";},1000);}
+
+function commit(t){
+  const w=words[wi];typed[wi]=t;ks++;kok++;rawC+=t.length+1;
+  if(eq(t,w)){okC+=w.length+1;{const c=clean(w);S.ok[c]=(S.ok[c]||0)+1;}if(S.missed[w]){S.missed[w]--;if(S.missed[w]<=0)delete S.missed[w];}}
+  else{const b=w.replace(/[.,]/g,"");S.ok[b]=Math.max(0,(S.ok[b]||0)-2);wrongW[b]=(wrongW[b]||0)+1;if(strip(t)===strip(w)&&t!==w)accE++;}
+  paint(wi);wi++;cur="";
+  if(wi>=words.length){if(O.mode==="time"){const more=gen(40);more.forEach(x=>{words.push(x);$("words").append(el("div","w",x));});}else{finish();return;}}
+  paint(wi);caret();
+}
+$("inp").addEventListener("input",()=>{
+  if(done||locked){$("inp").value="";return;}
+  const inp=$("inp");let v=inp.value;if(!started&&v.trim())start();
+  if(v.endsWith(" ")){const t=v.trim();inp.value="";if(t)commit(t);return;}
+  if(v.length>cur.length){const c=v[v.length-1],e=words[wi][v.length-1];ks++;if(e!==undefined&&(c===e||(!O.strict&&strip(c)===strip(e))))kok++;}
+  cur=v;paint(wi);caret();
+});
+document.addEventListener("keydown",e=>{if(e.key==="Tab"||(e.key==="Escape")){e.preventDefault();reset();}});
+$("wrap").onclick=()=>$("inp").focus();
+$("inp").onfocus=()=>$("wrap").classList.remove("blur");
+$("inp").onblur=()=>{if(!done)$("wrap").classList.add("blur");};
+window.addEventListener("resize",caret);
+
+function finish(){
+  if(done)return;done=true;clearInterval(timer);
+  const el_=O.mode==="time"?O.val:Math.max(1,(Date.now()-t0)/1000),m=el_/60;
+  const wpm=okC/5/m,raw=rawC/5/m,acc=ks?kok/ks*100:0;
+  const key=O.mode+O.val+O.src;if(!S.pb[key]||wpm>S.pb[key])S.pb[key]=wpm;
+  S.hist.push({w:Math.round(wpm),a:Math.round(acc),d:Date.now(),e:accE,n:wi});S.hist=S.hist.slice(-200);
+  Object.entries(wrongW).forEach(([w,c])=>{S.missed[w]=Math.min(9,(S.missed[w]||0)+c);});
+  save();bars();show({wpm,raw,acc,el_,wrongN:Object.values(wrongW).reduce((a,b)=>a+b,0)});
+}
+function graph(){
+  const NS="http://www.w3.org/2000/svg",s=document.createElementNS(NS,"svg");s.setAttribute("viewBox","0 0 600 150");s.setAttribute("class","gr");s.setAttribute("preserveAspectRatio","none");
+  if(samples.length<2)return s;
+  const mx=Math.max(10,...samples.map(p=>Math.max(p.w,p.r)))*1.1;
+  [["w","var(--main)"],["r","var(--sub)"]].forEach(([k,c])=>{
+    const p=document.createElementNS(NS,"polyline");
+    p.setAttribute("points",samples.map((q,i)=>(10+i/(samples.length-1)*580)+","+(140-q[k]/mx*125)).join(" "));
+    p.setAttribute("fill","none");p.setAttribute("stroke",c);p.setAttribute("stroke-width","2.5");s.append(p);});
+  return s;
+}
+function show(r){
+  $("test").style.display="none";const R=$("res");R.textContent="";R.style.display="block";
+  const big=el("div","big");
+  [["mpm",Math.round(r.wpm),"v"],["précision",Math.round(r.acc)+"%","s"]].forEach(([l,v,c])=>{const d=el("div");d.append(el("div",null,l),el("div",c,v));big.append(d);});
+  R.append(big,graph());
+  const sm=el("div","sm");
+  [["brut",Math.round(r.raw)],["temps",Math.round(r.el_)+"s"],["mots faux",r.wrongN],["fautes d’accent",accE]].forEach(([l,v])=>{const d=el("div");d.append(el("b",null,v),document.createTextNode(l));sm.append(d);});
+  R.append(sm);
+  const ws=Object.entries(wrongW).sort((a,b)=>b[1]-a[1]);
+  const box=el("div");R.append(box);
+  if(ws.length){R.append(el("div","lbl","mots à retravailler"));const ch=el("div");ws.forEach(([w,c])=>{const s=el("span","chip",w);s.style.cursor="pointer";s.onclick=e=>showTr(w,e);if(c>1)s.append(el("i",null," ×"+c));ch.append(s);});R.append(ch);}
+  else R.append(el("div","lbl","aucun mot faux 🎉"));
+  const bt=el("div","btns");
+  const b1=el("button","p","↻ recommencer");b1.onclick=reset;bt.append(b1);
+  if(ws.length){const b2=el("button",null,"retaper mes erreurs");b2.onclick=()=>{O.src="erreurs";O.mode="words";O.val=25;bars();reset();};bt.append(b2);
+    {const b3=el("button",null,sample?"✨ expliquer mes erreurs (IA)":"expliquer mes erreurs");b3.onclick=()=>(sample?explain:explainLocal)(ws.slice(0,8).map(x=>x[0]),b3,R);bt.append(b3);}}
+  R.append(bt);
+}
+async function explain(list,btn,R){
+  if(busy)return;busy=true;btn.disabled=true;btn.textContent="analyse…";
+  try{
+    const r=await sample.json(`Tu es prof de français pour un Tunisien (niveau ${O.lvl}). Voici des mots français que l’élève a mal tapés ou mal écrits: ${list.join(", ")}.\nPour chaque mot réponds en JSON: [{"mot":"…","sens":"traduction en arabe tunisien (darija) en lettres latines + en arabe","phrase":"une phrase simple d’exemple en français","astuce":"astuce courte en darija latin pour retenir l’orthographe ou l’accent (genre, accent, double lettre…)"}]. Uniquement le JSON.`,{cache:false});
+    const arr=Array.isArray(r)?r:(r.mots||[]);const c=el("div","cards");
+    arr.forEach(x=>{const d=el("div","cd");d.append(el("h4",null,x.mot),el("p","m",x.sens||""),el("p",null,"« "+(x.phrase||"")+" »"),el("p",null,"💡 "+(x.astuce||"")));c.append(d);});
+    R.append(el("div","lbl","explications"),c);btn.remove();
+  }catch(e){btn.disabled=false;btn.textContent="✨ réessayer";}
+  busy=false;
+}
+const clean=w=>w.toLowerCase().replace(/[.,;:!?«»"()]/g,"").trim();
+const lookup=w=>{const k=clean(w);return D[k]||S.tr[k]||null;};
+async function showTr(raw,e){
+  const k=clean(raw),p=$("tr");p.style.display="block";
+  const x=e?e.clientX:innerWidth/2,y=e?e.clientY:100;
+  p.style.left=Math.max(8,Math.min(x,innerWidth-260))+"px";p.style.top=(y+16)+"px";
+  let t=lookup(raw);
+  p.textContent="";p.append(el("b",null,k));
+  if(!t&&sample){p.append(el("div","m","traduction…"));
+    try{const r=await sample.json(`Traduis le mot français « ${k} » en darija tunisien (lettres latines) puis en arabe, très court. Réponds en JSON: {"t":"…"}`,{cache:true});t=String(r.t||"");if(t){S.tr[k]=t;save();}}catch(_){}
+    p.textContent="";p.append(el("b",null,k));}
+  p.append(el("div","m",t||"pas dans le dictionnaire hors-ligne (ouvre la page dans claude.ai pour l’ajouter)"));
+}
+document.addEventListener("pointerdown",e=>{if(!e.target.closest("#tr")&&!e.target.closest(".w")&&!e.target.closest(".chip"))$("tr").style.display="none";});
+$("inp").addEventListener("input",()=>{$("tr").style.display="none";});
+$("words").addEventListener("click",e=>{const d=e.target.closest(".w");if(!d)return;const i=[...$("words").children].indexOf(d)-1;if(words[i])showTr(words[i],e);});
+function explainLocal(list,btn,R){
+  const c=el("div","cards");
+  list.forEach(w=>{const d=el("div","cd");d.append(el("h4",null,w));
+    d.append(el("p","m",lookup(w)||"traduction non disponible hors-ligne"));
+    const ac=[...new Set(w.match(/[àâäçéèêëîïôöùûüÿœæ]/gi)||[])];
+    d.append(el("p",null,"💡 "+(ac.length?"e7dher mel accents / lettres spéciales : "+ac.join(" "):"ekteb el mot bchwaya 3 wala 4 marrat bech yethabbet")));
+    c.append(d);});
+  R.append(el("div","lbl","explications"),c);btn.remove();
+}
+const dkey=t=>{const d=new Date(t);return d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();};
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+function stats(){
+  const H=S.hist,now=Date.now(),W=7*864e5;
+  const w1=H.filter(h=>now-h.d<W),w0=H.filter(h=>now-h.d>=W&&now-h.d<2*W),last=H.slice(-10);
+  const lw=avg(last.map(h=>h.w)),la=avg(last.map(h=>h.a));
+  const tw=last.reduce((s,h)=>s+(h.n||0),0),te=last.reduce((s,h)=>s+(h.e||0),0),accRate=tw?te/tw*100:0;
+  const tot=Object.keys(D).length,mast=Object.keys(S.ok).filter(k=>S.ok[k]>=3&&D[k]).length;
+  const sc=Math.round(Math.max(0,Math.min(100,.4*Math.max(0,Math.min(100,(la-80)*5))+.3*Math.min(100,lw/60*100)+.2*Math.max(0,100-accRate*5)+.1*Math.min(100,mast/tot*200))));
+  const days=new Set(H.map(h=>dkey(h.d)));let streak=0,t=now;if(!days.has(dkey(t)))t-=864e5;while(days.has(dkey(t))){streak++;t-=864e5;}
+  return{n:H.length,n0:w0.length,wpm:avg(w1.map(h=>h.w)),acc:avg(w1.map(h=>h.a)),wpm0:avg(w0.map(h=>h.w)),acc0:avg(w0.map(h=>h.a)),accRate,tot,mast,sc,streak,today:H.filter(h=>dkey(h.d)===dkey(now)).length,lvl:sc<20?"A1":sc<40?"A2":sc<60?"B1":sc<80?"B2":"C1"};
+}
+function lines(H){
+  const NS="http://www.w3.org/2000/svg",s=document.createElementNS(NS,"svg");s.setAttribute("viewBox","0 0 600 150");s.setAttribute("class","gr");s.setAttribute("preserveAspectRatio","none");
+  if(H.length<2)return s;
+  const mw=Math.max(10,...H.map(h=>h.w))*1.1;
+  [["w","var(--main)",h=>h.w/mw],["a","var(--sub)",h=>Math.max(0,(h.a-60)/40)]].forEach(([k,c,f])=>{const p=document.createElementNS(NS,"polyline");
+    p.setAttribute("points",H.map((h,i)=>(10+i/(H.length-1)*580)+","+(140-f(h)*125)).join(" "));p.setAttribute("fill","none");p.setAttribute("stroke",c);p.setAttribute("stroke-width","2.5");s.append(p);});
+  return s;
+}
+function dash(){
+  const R=$("dash");R.textContent="";const st=stats();
+  const hero=el("div","hero"),a=el("div"),b=el("div");
+  a.append(el("div","lbl","niveau estimé (frappe + orthographe)"),el("div","v",st.n?st.lvl:"—"));
+  b.append(el("div",null,st.n?"score "+st.sc+" / 100":"fais quelques tests pour calculer ton niveau"),el("div","lbl","40% précision · 30% vitesse · 20% accents · 10% vocabulaire maîtrisé (indicatif, ce n’est pas un diplôme)"));
+  hero.append(a,b);R.append(hero);
+  const kp=el("div","kp");
+  const k=(v,l,tr)=>{const d=el("div"),x=el("b",null,v);if(typeof tr==="number"&&Math.abs(tr)>=.5){const i=el("i",tr>0?"up":"dn",(tr>0?"▲ +":"▼ ")+Math.round(tr));x.append(i);}d.append(x,el("span",null,l));kp.append(d);};
+  k(Math.round(st.wpm)+" mpm","vitesse moyenne 7 jours",st.n0?st.wpm-st.wpm0:null);
+  k(Math.round(st.acc)+"%","précision moyenne 7 jours",st.n0?st.acc-st.acc0:null);
+  k(st.accRate.toFixed(1)+"%","mots avec faute d’accent (10 derniers tests)");
+  k(st.mast+" / "+st.tot,"vocabulaire maîtrisé (3 réussites)");
+  k(st.today+" / "+S.goal.tests,"tests aujourd’hui");
+  k(st.streak+" j","série de jours");
+  k(Object.keys(S.missed).length,"mots à retravailler");
+  k(Math.round(Object.values(S.pb).reduce((x,y)=>Math.max(x,y),0))+" mpm","record");
+  R.append(kp);
+  const og=el("div","hero");og.style.display="block";og.append(el("div","lbl","mes objectifs (modifiables)"));
+  const gl=el("div","gl");
+  [["tests","tests par jour",st.today/S.goal.tests],["acc","précision cible % (moyenne 7 jours)",st.acc/S.goal.acc],["wpm","vitesse cible mpm (moyenne 7 jours)",st.wpm/S.goal.wpm]].forEach(([key,l,p])=>{
+    const left=el("div");left.append(el("div",null,l+" — "+Math.min(100,Math.round(p*100))+"%"));const pb=el("div","pb"),i=el("i");i.style.width=Math.min(100,p*100)+"%";pb.append(i);left.append(pb);
+    const inp=document.createElement("input");inp.type="number";inp.value=S.goal[key];inp.onchange=()=>{S.goal[key]=Math.max(1,+inp.value||1);save();dash();};gl.append(left,inp);});
+  og.append(gl);R.append(og);
+  R.append(el("div","lbl","évolution des 30 derniers tests (jaune : vitesse · gris : précision)"),lines(S.hist.slice(-30)));
+  R.append(el("div","lbl","progression du vocabulaire par thème (mots maîtrisés)"));
+  Object.keys(TH).forEach(n=>{const tt=TH[n],m=tt.filter(w=>(S.ok[w]||0)>=3).length;
+    const d=el("div");d.append(el("div",null,n+" — "+m+" / "+tt.length));const pb=el("div","pb"),i=el("i");i.style.width=(m/tt.length*100)+"%";pb.append(i);d.append(pb);R.append(d);});
+}
+$("tabT").onclick=()=>reset();
+$("tabD").onclick=()=>{clearInterval(timer);started=false;$("test").style.display="none";$("res").style.display="none";$("dash").style.display="block";$("tabD").className="o on";$("tabT").className="o";dash();};
+bars();reset();
+</script>
+</body>
+</html>
