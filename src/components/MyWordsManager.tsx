@@ -62,7 +62,9 @@ export const MyWordsManager: React.FC<MyWordsManagerProps> = ({
   const [textTitle, setTextTitle] = useState('');
   const [textContent, setTextContent] = useState('');
 
-  const allEntries = useMemo(() => {
+  const [visibleLimit, setVisibleLimit] = useState(80);
+
+  const filteredEntries = useMemo(() => {
     const merged = new Map<string, {word: string; darija: string; isCustom: boolean}>();
     Object.entries(DICTIONARY).forEach(([w, d]) => {
       merged.set(w, {word: w, darija: d, isCustom: false});
@@ -72,21 +74,24 @@ export const MyWordsManager: React.FC<MyWordsManagerProps> = ({
     });
 
     const q = search.trim().toLowerCase();
-    return Array.from(merged.values())
-      .filter((item) => {
-        if (filter === 'custom' && !item.isCustom) return false;
-        if (filter === 'missed' && !(missedCounts[item.word] > 0)) return false;
-        if (filter === 'mastered' && !((wordMastery[item.word] ?? 0) >= 3)) return false;
-        if (q) {
-          return (
-            item.word.toLowerCase().includes(q) ||
-            item.darija.toLowerCase().includes(q)
-          );
-        }
-        return true;
-      })
-      .slice(0, 80);
+    return Array.from(merged.values()).filter((item) => {
+      if (filter === 'custom' && !item.isCustom) return false;
+      if (filter === 'missed' && !(missedCounts[item.word] > 0)) return false;
+      if (filter === 'mastered' && !((wordMastery[item.word] ?? 0) >= 3)) return false;
+      if (q) {
+        return (
+          item.word.toLowerCase().includes(q) ||
+          item.darija.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
   }, [customWords, search, filter, missedCounts, wordMastery]);
+
+  const allEntries = useMemo(
+    () => filteredEntries.slice(0, visibleLimit),
+    [filteredEntries, visibleLimit]
+  );
 
   const handleAddWord = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +115,10 @@ export const MyWordsManager: React.FC<MyWordsManagerProps> = ({
     setTextContent('');
   };
 
-  const totalWords = Object.keys(DICTIONARY).length + Object.keys(customWords).length;
+  const totalWords = useMemo(
+    () => new Set([...Object.keys(DICTIONARY), ...Object.keys(customWords)]).size,
+    [customWords]
+  );
 
   return (
     <div className="space-y-5 lg-page-enter">
@@ -264,6 +272,20 @@ export const MyWordsManager: React.FC<MyWordsManagerProps> = ({
                     />
                   );
                 })}
+                {filteredEntries.length > allEntries.length && (
+                  <div className="pt-3 flex items-center justify-between gap-2">
+                    <span className="text-xs" style={{color: 'var(--sub)'}}>
+                      {allEntries.length} affichés sur {filteredEntries.length}
+                    </span>
+                    <GlassButton
+                      variant="glass"
+                      size="sm"
+                      onClick={() => setVisibleLimit((v) => v + 80)}
+                    >
+                      Afficher plus
+                    </GlassButton>
+                  </div>
+                )}
               </div>
             ) : (
               <GlassEmptyState

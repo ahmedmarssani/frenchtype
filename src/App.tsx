@@ -2,12 +2,14 @@ import {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   BarChart3,
   BookOpen,
+  BookOpenCheck,
   Headphones,
   Keyboard,
   MessageSquare,
   Settings,
 } from 'lucide-react';
 import {DictationTrainer} from './components/DictationTrainer';
+import {GrammarHub} from './components/GrammarHub';
 import {MyWordsManager} from './components/MyWordsManager';
 import {OfflineIndicator} from './components/OfflineIndicator';
 import {ProgressDashboard} from './components/ProgressDashboard';
@@ -18,7 +20,27 @@ import {GlassAppBar, GlassBottomNav, type NavDestination} from './components/ui/
 import {GlassModal} from './components/ui/LiquidGlass';
 import {DEFAULT_CUSTOM_TEXTS} from './data/frenchCorpus';
 import {LIQUID_GLASS_TOKENS} from './theme/liquidGlassTheme';
-import type {AppTab, CustomText, TestSession, ThemeId, UserGoals, UserSettings} from './types';
+import type {
+  AppTab,
+  CustomText,
+  GrammarProgressEntry,
+  TestSession,
+  ThemeId,
+  UserGoals,
+  UserSettings,
+} from './types';
+import {
+  fetchBootstrap,
+  syncAddText,
+  syncClearHistory,
+  syncDeleteText,
+  syncDeleteWord,
+  syncSession,
+  syncSettings,
+  syncTranslation,
+  syncUpsertWord,
+  syncWordDeltas,
+} from './utils/backendSync';
 import {setHapticsEnabled} from './utils/haptics';
 
 const STORAGE_THEME_KEY = 'frenchtype_theme_v1';
@@ -30,6 +52,7 @@ const STORAGE_CUSTOM_WORDS_KEY = 'frenchtype_custom_words_v1';
 const STORAGE_CUSTOM_TEXTS_KEY = 'frenchtype_custom_texts_v1';
 const STORAGE_GOALS_KEY = 'frenchtype_goals_v1';
 const STORAGE_SETTINGS_KEY = 'frenchtype_settings_v1';
+const STORAGE_GRAMMAR_PROGRESS_KEY = 'frenchtype_grammar_progress_v1';
 
 const DEFAULT_GOALS: UserGoals = {tests: 3, acc: 95, wpm: 30};
 const DEFAULT_SETTINGS: UserSettings = {
@@ -138,11 +161,85 @@ export default function App() {
     }
   });
 
+  const [grammarProgress, setGrammarProgress] = useState<Record<string, GrammarProgressEntry>>(
+    () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_GRAMMAR_PROGRESS_KEY);
+        return raw ? (JSON.parse(raw) as Record<string, GrammarProgressEntry>) : {};
+      } catch {
+        return {};
+      }
+    }
+  );
+
   const [pendingTutorWords, setPendingTutorWords] = useState<string[] | null>(null);
   const [selectedCustomTextId, setSelectedCustomTextId] = useState<string | null>(null);
+  const [practiceSnippet, setPracticeSnippet] = useState<{title: string; content: string} | null>(
+    null
+  );
   const [initialDictationText, setInitialDictationText] = useState<string | null>(null);
 
   const currentTheme = LIQUID_GLASS_TOKENS.colors[themeId];
+
+  // Hydrate full profile state from backend on startup (merging cleanly with local cache)
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const remote = await fetchBootstrap();
+      if (!active || !remote) return;
+
+      try {
+        if (localStorage.getItem(STORAGE_THEME_KEY) === null) {
+          setThemeId(remote.themeId);
+        }
+        if (localStorage.getItem(STORAGE_SETTINGS_KEY) === null) {
+          setUserSettings(remote.settings);
+        }
+        if (localStorage.getItem(STORAGE_GOALS_KEY) === null) {
+          setGoals(remote.goals);
+        }
+      } catch {
+        // ignore storage errors
+      }
+
+      if (remote.sessions.length > 0) {
+        setSessions((local) => {
+          const merged = new Map<string, TestSession>();
+          local.forEach((s) => merged.set(s.id, s));
+          remote.sessions.forEach((s) => merged.set(s.id, s));
+          return Array.from(merged.values())
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .slice(-300);
+        });
+      }
+      if (Object.keys(remote.wordMastery).length > 0) {
+        setWordMastery((local) => ({...remote.wordMastery, ...local}));
+      }
+      if (Object.keys(remote.missedCounts).length > 0) {
+        setMissedCounts((local) => ({...remote.missedCounts, ...local}));
+      }
+      if (Object.keys(remote.customWords).length > 0) {
+        setCustomWords((local) => ({...remote.customWords, ...local}));
+      }
+      if (Object.keys(remote.customTranslations).length > 0) {
+        setCustomTranslations((local) => ({...remote.customTranslations, ...local}));
+      }
+      if (Object.keys(remote.grammarProgress).length > 0) {
+        setGrammarProgress((local) => ({...local, ...remote.grammarProgress}));
+      }
+      if (remote.customTexts.length > 0) {
+        setCustomTexts((local) => {
+          const map = new Map<string, CustomText>();
+          remote.customTexts.forEach((t) => map.set(t.id, t));
+          local.forEach((t) => map.set(t.id, t));
+          return Array.from(map.values());
+        });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -240,7 +337,15 @@ export default function App() {
     }
   }, [goals]);
 
-  const applyWordProgress = useCallback(
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_GRAMMAR_PROGRESS_KEY, JSON.stringify(grammarProgress));
+    } catch {
+      // ignore
+    }
+  }, [grammarProgress]);
+
+  const applyWordProgressState = useCallback(
     (wordDeltas: Record<string, number>, missedDeltas: Record<string, number>) => {
       setWordMastery((prev) => {
         const next = {...prev};
@@ -266,6 +371,14 @@ export default function App() {
     []
   );
 
+  const handleRecordWordProgress = useCallback(
+    (wordDeltas: Record<string, number>, missedDeltas: Record<string, number>) => {
+      applyWordProgressState(wordDeltas, missedDeltas);
+      void syncWordDeltas(wordDeltas, missedDeltas);
+    },
+    [applyWordProgressState]
+  );
+
   const handleCompleteSession = useCallback(
     (
       session: TestSession,
@@ -273,17 +386,20 @@ export default function App() {
       missedDeltas: Record<string, number>
     ) => {
       setSessions((prev) => [...prev, session]);
-      applyWordProgress(wordDeltas, missedDeltas);
+      applyWordProgressState(wordDeltas, missedDeltas);
+      void syncSession(session, wordDeltas, missedDeltas);
     },
-    [applyWordProgress]
+    [applyWordProgressState]
   );
 
   const handleSaveTranslation = useCallback((word: string, translation: string) => {
     setCustomTranslations((prev) => ({...prev, [word]: translation}));
+    void syncTranslation(word, translation);
   }, []);
 
   const handleAddCustomWord = useCallback((word: string, darija: string) => {
     setCustomWords((prev) => ({...prev, [word]: darija}));
+    void syncUpsertWord(word, darija);
   }, []);
 
   const handleDeleteCustomWord = useCallback((word: string) => {
@@ -292,6 +408,7 @@ export default function App() {
       delete next[word];
       return next;
     });
+    void syncDeleteWord(word);
   }, []);
 
   const handleAddCustomText = useCallback((title: string, content: string) => {
@@ -302,18 +419,34 @@ export default function App() {
       createdAt: Date.now(),
     };
     setCustomTexts((prev) => [newText, ...prev]);
+    void syncAddText(newText.id, newText.title, newText.content);
   }, []);
 
   const handleDeleteCustomText = useCallback((id: string) => {
     setCustomTexts((prev) => prev.filter((t) => t.id !== id));
+    void syncDeleteText(id);
+  }, []);
+
+  const handleChangeTheme = useCallback((nextTheme: ThemeId) => {
+    setThemeId(nextTheme);
+    void syncSettings({themeId: nextTheme});
   }, []);
 
   const handleUpdateGoal = useCallback((key: keyof UserGoals, value: number) => {
-    setGoals((prev) => ({...prev, [key]: Math.max(1, value)}));
+    const safeVal = Math.max(1, value);
+    setGoals((prev) => {
+      const next = {...prev, [key]: safeVal};
+      void syncSettings({goals: next});
+      return next;
+    });
   }, []);
 
   const handleUpdateSettings = useCallback((patch: Partial<UserSettings>) => {
-    setUserSettings((prev) => ({...prev, ...patch}));
+    setUserSettings((prev) => {
+      const next = {...prev, ...patch};
+      void syncSettings({settings: next});
+      return next;
+    });
   }, []);
 
   const handleAskTutor = useCallback((words: string[]) => {
@@ -325,10 +458,16 @@ export default function App() {
     setSessions([]);
     setMissedCounts({});
     setWordMastery({});
+    void syncClearHistory();
   }, []);
 
   const handlePracticeTextInTester = useCallback((id: string) => {
     setSelectedCustomTextId(id);
+    setActiveTab('tester');
+  }, []);
+
+  const handlePracticeGrammarInTester = useCallback((title: string, content: string) => {
+    setPracticeSnippet({title, content});
     setActiveTab('tester');
   }, []);
 
@@ -338,6 +477,7 @@ export default function App() {
   }, []);
 
   const consumeSelectedCustomText = useCallback(() => setSelectedCustomTextId(null), []);
+  const consumePracticeSnippet = useCallback(() => setPracticeSnippet(null), []);
   const consumeInitialDictation = useCallback(() => setInitialDictationText(null), []);
   const consumePendingWords = useCallback(() => setPendingTutorWords(null), []);
 
@@ -365,9 +505,10 @@ export default function App() {
 
   const navItems: NavDestination[] = [
     {id: 'tester', label: 'Tester', icon: Keyboard},
-    {id: 'suivi', label: 'Suivi', icon: BarChart3},
+    {id: 'grammaire', label: 'Grammaire', icon: BookOpenCheck},
     {id: 'dictee', label: 'Dictée', icon: Headphones},
     {id: 'mots', label: 'Mes mots', icon: BookOpen},
+    {id: 'suivi', label: 'Suivi', icon: BarChart3},
     {id: 'reglages', label: 'Réglages', icon: Settings},
   ];
 
@@ -390,8 +531,19 @@ export default function App() {
             cachedTranslations={customTranslations}
             selectedCustomTextId={selectedCustomTextId}
             onConsumeSelectedCustomText={consumeSelectedCustomText}
+            practiceSnippet={practiceSnippet}
+            onConsumePracticeSnippet={consumePracticeSnippet}
             onSaveTranslation={handleSaveTranslation}
             onCompleteSession={handleCompleteSession}
+            onAskTutor={handleAskTutor}
+          />
+        )}
+        {activeTab === 'grammaire' && (
+          <GrammarHub
+            grammarProgress={grammarProgress}
+            onUpdateGrammarProgress={setGrammarProgress}
+            onPracticeTextInTester={handlePracticeGrammarInTester}
+            onPracticeTextInDictation={handlePracticeTextInDictation}
             onAskTutor={handleAskTutor}
           />
         )}
@@ -416,7 +568,7 @@ export default function App() {
             initialDictationText={initialDictationText}
             defaultSlowMode={userSettings.dictationSlowDefault}
             onConsumeInitialDictation={consumeInitialDictation}
-            onRecordResult={applyWordProgress}
+            onRecordResult={handleRecordWordProgress}
           />
         )}
         {activeTab === 'mots' && (
@@ -436,7 +588,7 @@ export default function App() {
         {activeTab === 'reglages' && (
           <SettingsScreen
             themeId={themeId}
-            onChangeTheme={setThemeId}
+            onChangeTheme={handleChangeTheme}
             userSettings={userSettings}
             onUpdateSettings={handleUpdateSettings}
             goals={goals}

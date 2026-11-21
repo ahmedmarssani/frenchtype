@@ -85,11 +85,14 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
 
     const days = new Set(sessions.map((h) => dayKey(h.timestamp)));
     let streak = 0;
-    let cursor = now;
-    if (!days.has(dayKey(cursor))) cursor -= 864e5;
-    while (days.has(dayKey(cursor))) {
+    const cursorDate = new Date(now);
+    cursorDate.setHours(12, 0, 0, 0);
+    if (!days.has(dayKey(cursorDate.getTime()))) {
+      cursorDate.setDate(cursorDate.getDate() - 1);
+    }
+    while (days.has(dayKey(cursorDate.getTime()))) {
       streak++;
-      cursor -= 864e5;
+      cursorDate.setDate(cursorDate.getDate() - 1);
     }
 
     const wpm7 = avg(w1.map((h) => h.wpm));

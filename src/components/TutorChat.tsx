@@ -1,6 +1,12 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {AlertCircle, RotateCcw, Send, Volume2} from 'lucide-react';
+import {AlertCircle, RefreshCw, RotateCcw, Send, Volume2} from 'lucide-react';
 import type {ChatMessage, TutorPersona} from '../types';
+import {apiUrl} from '../utils/api';
+import {
+  backendHeaders,
+  clearServerChatHistory,
+  fetchServerChatHistory,
+} from '../utils/backendSync';
 import {triggerLightHaptic} from '../utils/haptics';
 import {speakFrench} from '../utils/speech';
 import {GlassButton, GlassSkeleton} from './ui/LiquidGlass';
@@ -26,8 +32,7 @@ export const TUTOR_PERSONAS: TutorPersona[] = [
     id: 'interactive',
     label: 'Dialogue',
     shortDesc: 'Jeux de rôle usine & nuances',
-    model: 'gemini-4-argon',
-    paidNote: true,
+    model: 'gemini-4-hydrogen',
     systemInstruction:
       'Tu es un partenaire de conversation et correcteur avancé en français. Crée des dialogues immersifs (réunion qualité, cabine de peinture, contrôle d’épaisseur, café) adaptés au niveau de l’utilisateur, corrige subtilement ses fautes d’orthographe ou de registre, et propose des tournures naturelles.',
   },
@@ -35,8 +40,7 @@ export const TUTOR_PERSONAS: TutorPersona[] = [
     id: 'deep',
     label: 'Analyse',
     shortDesc: 'Raisonnement & orthographe',
-    model: 'gemini-4-carbon',
-    paidNote: true,
+    model: 'gemini-4-hydrogen',
     systemInstruction:
       'Tu es un linguiste francophone spécialisé dans l’analyse approfondie des difficultés du français pour les arabophones : accord du participe passé, subjonctif, accents circonflexes, et diagnostic précis des erreurs récurrentes.',
   },
@@ -50,6 +54,22 @@ interface TutorChatProps {
 
 const STORAGE_CHAT_KEY = 'frenchtype_chat_history_v1';
 
+const WELCOME_MSG: ChatMessage = {
+  id: 'welcome',
+  role: 'model',
+  model: 'gemini-4-hydrogen',
+  timestamp: Date.now(),
+  text: 'Bonjour ! Je suis votre tuteur frenchtype. Posez-moi une question sur un mot de peinture/méthodes, une règle d’accent (é / è / ê), ou lancez un dialogue rapide.',
+};
+
+function cleanStaleTrailingUsers(list: ChatMessage[]): ChatMessage[] {
+  const copy = [...list];
+  while (copy.length > 0 && copy[copy.length - 1].role === 'user') {
+    copy.pop();
+  }
+  return copy.length > 0 ? copy : [WELCOME_MSG];
+}
+
 export const TutorChat: React.FC<TutorChatProps> = ({
   pendingWords,
   onConsumePendingWords,
@@ -61,30 +81,41 @@ export const TutorChat: React.FC<TutorChatProps> = ({
       const raw = localStorage.getItem(STORAGE_CHAT_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as ChatMessage[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return cleanStaleTrailingUsers(parsed);
+        }
       }
     } catch {
       // ignore storage errors
     }
-    return [
-      {
-        id: 'welcome',
-        role: 'model',
-        model: 'gemini-4-hydrogen',
-        timestamp: Date.now(),
-        text: 'Bonjour ! Je suis votre tuteur frenchtype. Posez-moi une question sur un mot de peinture/méthodes, une règle d’accent (é / è / ê), ou lancez un dialogue rapide.',
-      },
-    ];
+    return [WELCOME_MSG];
   });
 
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [failedText, setFailedText] = useState<string | null>(null);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
 
   const threadEndRef = useRef<HTMLDivElement>(null);
 
   const activePersona =
     TUTOR_PERSONAS.find((p) => p.id === personaId) ?? TUTOR_PERSONAS[0];
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const remote = await fetchServerChatHistory();
+      if (!active || !remote || remote.length === 0) return;
+      setMessages((prev) => {
+        const onlyWelcome = prev.length <= 1 && prev[0]?.id === 'welcome';
+        return onlyWelcome ? [WELCOME_MSG, ...cleanStaleTrailingUsers(remote)] : prev;
+      });
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -104,6 +135,9 @@ export const TutorChat: React.FC<TutorChatProps> = ({
 
     void triggerLightHaptic();
     setErrorMsg(null);
+    setFailedText(null);
+
+    const baseMessages = cleanStaleTrailingUsers(messages);
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
       role: 'user',
@@ -111,7 +145,7 @@ export const TutorChat: React.FC<TutorChatProps> = ({
       timestamp: Date.now(),
     };
 
-    const nextMessages = [...messages, userMsg];
+    const nextMessages = [...baseMessages, userMsg];
     setMessages(nextMessages);
     setInput('');
     setLoading(true);
@@ -121,9 +155,9 @@ export const TutorChat: React.FC<TutorChatProps> = ({
         .filter((m) => m.id !== 'welcome')
         .map((m) => ({role: m.role, text: m.text}));
 
-      const res = await fetch('/api/chat', {
+      const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: backendHeaders(),
         body: JSON.stringify({
           model: activePersona.model,
           systemInstruction: activePersona.systemInstruction,
@@ -131,11 +165,15 @@ export const TutorChat: React.FC<TutorChatProps> = ({
         }),
       });
 
-      const data = (await res.json()) as {text?: string; error?: string; model?: string};
+      const contentType = res.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? ((await res.json()) as {text?: string; error?: string; model?: string})
+        : {error: `Réponse serveur inattendue (HTTP ${res.status}).`};
 
       if (!res.ok) {
+        setMessages(baseMessages);
+        setFailedText(trimmed);
         setErrorMsg(data.error || 'Impossible de joindre le tuteur Gemini.');
-        setLoading(false);
         return;
       }
 
@@ -146,9 +184,13 @@ export const TutorChat: React.FC<TutorChatProps> = ({
         model: data.model ?? activePersona.model,
         timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, reply]);
+      setMessages([...nextMessages, reply]);
     } catch {
-      setErrorMsg('Erreur réseau. Vérifiez votre connexion pour discuter avec le tuteur.');
+      setMessages(baseMessages);
+      setFailedText(trimmed);
+      setErrorMsg(
+        'Connexion au serveur tuteur impossible. Vérifiez votre accès internet (ou l’URL du serveur dans Réglages).'
+      );
     } finally {
       setLoading(false);
     }
@@ -167,7 +209,9 @@ export const TutorChat: React.FC<TutorChatProps> = ({
 
   const resetConversation = () => {
     void triggerLightHaptic();
+    void clearServerChatHistory();
     setErrorMsg(null);
+    setFailedText(null);
     setMessages([
       {
         id: 'welcome',
@@ -177,6 +221,18 @@ export const TutorChat: React.FC<TutorChatProps> = ({
         text: 'Nouvelle session prête ! Quel point de français souhaitez-vous travailler maintenant ?',
       },
     ]);
+  };
+
+  const handleSpeakMessage = async (msg: ChatMessage) => {
+    void triggerLightHaptic();
+    setSpeakingId(msg.id);
+    try {
+      await speakFrench(msg.text, 0.94, {
+        onError: (err) => setErrorMsg(err),
+      });
+    } finally {
+      setSpeakingId((prev) => (prev === msg.id ? null : prev));
+    }
   };
 
   return (
@@ -228,6 +284,7 @@ export const TutorChat: React.FC<TutorChatProps> = ({
       <div className="lg-surface-subtle flex-1 overflow-y-auto rounded-[20px] p-3.5 sm:p-4 space-y-3.5">
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
+          const isSpeaking = speakingId === msg.id;
           return (
             <div
               key={msg.id}
@@ -255,15 +312,13 @@ export const TutorChat: React.FC<TutorChatProps> = ({
                 {!isUser && (
                   <button
                     type="button"
-                    onClick={() => {
-                      void triggerLightHaptic();
-                      speakFrench(msg.text);
-                    }}
-                    className="lg-press min-h-[36px] px-2.5 rounded-[10px] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                    disabled={isSpeaking}
+                    onClick={() => void handleSpeakMessage(msg)}
+                    className="lg-press min-h-[36px] px-2.5 rounded-[10px] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-60"
                     style={{color: 'var(--main)'}}
                   >
                     <Volume2 className="w-3.5 h-3.5" />
-                    <span>Écouter</span>
+                    <span>{isSpeaking ? 'Audio…' : 'Écouter'}</span>
                   </button>
                 )}
               </div>
@@ -290,21 +345,39 @@ export const TutorChat: React.FC<TutorChatProps> = ({
             }}
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{color: 'var(--err)'}} />
-            <div className="space-y-1">
+            <div className="space-y-2 flex-1">
               <p>{errorMsg}</p>
-              {activePersona.paidNote && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPersonaId('prof');
-                    setErrorMsg(null);
-                  }}
-                  className="underline font-semibold cursor-pointer"
-                  style={{color: 'var(--main)'}}
-                >
-                  Basculer sur Professeur (gemini-4-hydrogen)
-                </button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {failedText && (
+                  <button
+                    type="button"
+                    onClick={() => void sendMessage(failedText)}
+                    className="lg-press lg-surface-strong min-h-[36px] px-3 rounded-[10px] font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                    style={{color: 'var(--main)'}}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Réessayer</span>
+                  </button>
+                )}
+                {personaId !== 'fast' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPersonaId('fast');
+                      setErrorMsg(null);
+                      if (failedText) {
+                        const text = failedText;
+                        setFailedText(null);
+                        setInput(text);
+                      }
+                    }}
+                    className="underline font-semibold cursor-pointer"
+                    style={{color: 'var(--main)'}}
+                  >
+                    Essayer avec le mode Rapide
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

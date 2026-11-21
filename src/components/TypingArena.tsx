@@ -25,6 +25,8 @@ import type {
   WordSource,
   WpmSample,
 } from '../types';
+import {apiUrl} from '../utils/api';
+import {backendHeaders} from '../utils/backendSync';
 import {triggerLightHaptic, triggerSuccessHaptic} from '../utils/haptics';
 import {speakFrench} from '../utils/speech';
 import {
@@ -42,6 +44,8 @@ interface TypingArenaProps {
   cachedTranslations: Record<string, string>;
   selectedCustomTextId: string | null;
   onConsumeSelectedCustomText: () => void;
+  practiceSnippet?: {title: string; content: string} | null;
+  onConsumePracticeSnippet?: () => void;
   onSaveTranslation: (word: string, translation: string) => void;
   onCompleteSession: (
     session: TestSession,
@@ -61,6 +65,8 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
   cachedTranslations,
   selectedCustomTextId,
   onConsumeSelectedCustomText,
+  practiceSnippet,
+  onConsumePracticeSnippet,
   onSaveTranslation,
   onCompleteSession,
   onAskTutor,
@@ -120,7 +126,7 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
   const isComposingRef = useRef<boolean>(false);
   const lastCommittedLenRef = useRef<number>(0);
 
-  const missedCountTotal = Object.keys(missedCounts).length;
+  const missedCountTotal = Object.values(missedCounts).filter((c) => c > 0).length;
 
   const metricsRef = useRef({correctChars: 0, rawChars: 0});
   useEffect(() => {
@@ -174,9 +180,9 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
         setAiLoading(true);
         setStatusMessage('L’IA rédige votre texte en français…');
         try {
-          const res = await fetch('/api/generate-text', {
+          const res = await fetch(apiUrl('/api/generate-text'), {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders(),
             body: JSON.stringify({level: lvl, theme: aTheme, length: aLen}),
           });
           const data = (await res.json()) as {texte?: string; error?: string};
@@ -247,6 +253,40 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCustomTextId]);
+
+  useEffect(() => {
+    if (practiceSnippet && practiceSnippet.content.trim()) {
+      const tokens = practiceSnippet.content.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+      const title = practiceSnippet.title;
+      onConsumePracticeSnippet?.();
+      if (tokens.length > 0) {
+        setTypedWords([]);
+        setCurrentInput('');
+        lastCommittedLenRef.current = 0;
+        isComposingRef.current = false;
+        if (inputRef.current) inputRef.current.value = '';
+        setStatus('idle');
+        setStartTime(null);
+        setElapsedSec(0);
+        setCorrectChars(0);
+        setRawChars(0);
+        setKeystrokes(0);
+        setCorrectKeystrokes(0);
+        setAccentErrors(0);
+        setSamples([]);
+        setLastResult(null);
+        setExplanations(null);
+        setInspected(null);
+        setModeKind('words');
+        setSource('mots');
+        setWords(tokens);
+        setStatusMessage(`Exercice ciblé : ${title}`);
+        if (wordBoxRef.current) wordBoxRef.current.scrollTop = 0;
+        window.setTimeout(() => inputRef.current?.focus(), 40);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [practiceSnippet]);
 
   const finalizeTest = useCallback(
     (
@@ -390,6 +430,15 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
     ]
   );
 
+  const latestTypingRef = useRef({
+    typedWords,
+    currentInput,
+    finalizeTest,
+  });
+  useEffect(() => {
+    latestTypingRef.current = {typedWords, currentInput, finalizeTest};
+  }, [typedWords, currentInput, finalizeTest]);
+
   useEffect(() => {
     if (status !== 'running' || !startTime) return;
 
@@ -413,12 +462,13 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
 
       if (modeKind === 'time' && source !== 'ia' && source !== 'textes' && secs >= timeVal) {
         window.clearInterval(interval);
-        finalizeTest(typedWords, currentInput, now, startTime);
+        const latest = latestTypingRef.current;
+        latest.finalizeTest(latest.typedWords, latest.currentInput, now, startTime);
       }
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [status, startTime, modeKind, timeVal, source, typedWords, currentInput, finalizeTest]);
+  }, [status, startTime, modeKind, timeVal, source]);
 
   const updateCaretPosition = useCallback(() => {
     const container = wordBoxRef.current;
@@ -450,6 +500,10 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
     if (y >= computedLH * 2 - 2) {
       container.scrollTop += computedLH;
       y -= computedLH;
+    } else if (y < 0 && container.scrollTop > 0) {
+      const delta = Math.min(container.scrollTop, computedLH);
+      container.scrollTop -= delta;
+      y += delta;
     }
 
     setCaretPos({
@@ -475,6 +529,15 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
         (target.tagName === 'SELECT' ||
           target.tagName === 'TEXTAREA' ||
           target.closest('[role="dialog"]'))
+      ) {
+        return;
+      }
+      if (
+        e.key === 'Tab' &&
+        target &&
+        target !== inputRef.current &&
+        target !== document.body &&
+        (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'A')
       ) {
         return;
       }
@@ -649,9 +712,9 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
 
     setInspected({word: clean, translation: null, loading: true});
     try {
-      const res = await fetch('/api/translate', {
+      const res = await fetch(apiUrl('/api/translate'), {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: backendHeaders(),
         body: JSON.stringify({word: clean}),
       });
       const data = (await res.json()) as {t?: string};
@@ -676,9 +739,9 @@ export const TypingArena: React.FC<TypingArenaProps> = ({
     setExplaining(true);
 
     try {
-      const res = await fetch('/api/explain-errors', {
+      const res = await fetch(apiUrl('/api/explain-errors'), {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: backendHeaders(),
         body: JSON.stringify({words: missedList.slice(0, 8), level: aiLevel}),
       });
       const data = (await res.json()) as {mots?: ErrorExplanation[]};

@@ -59,6 +59,8 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
 
   const [answer, setAnswer] = useState<string>('');
   const [checked, setChecked] = useState<boolean>(false);
+  const [audioLoading, setAudioLoading] = useState<boolean>(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -74,9 +76,6 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
       onConsumeInitialDictation();
     }
   }, [initialDictationText, onConsumeInitialDictation]);
-
-  const speechSupported =
-    typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   const activeItem = useMemo(() => {
     if (source === 'textes') {
@@ -98,7 +97,9 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
     }
 
     if (source === 'erreurs') {
-      const missedList = Object.keys(missedCounts);
+      const missedList = Object.entries(missedCounts)
+        .filter(([, count]) => count > 0)
+        .map(([w]) => w);
       if (missedList.length > 0) {
         const w = missedList[phraseIdx % missedList.length];
         return {
@@ -107,6 +108,11 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
           category: 'Mes erreurs',
         };
       }
+      return {
+        fr: DICTATION_PHRASES[phraseIdx % DICTATION_PHRASES.length].fr,
+        darija: 'Aucune erreur enregistrée pour l’instant (phrase métier affichée)',
+        category: 'Phrases métier',
+      };
     }
 
     if (source === 'theme') {
@@ -138,9 +144,17 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
     themeName,
   ]);
 
-  const playAudio = () => {
+  const playAudio = async () => {
     void triggerLightHaptic();
-    speakFrench(activeItem.fr, slowMode ? 0.72 : 0.95);
+    setAudioError(null);
+    setAudioLoading(true);
+    try {
+      await speakFrench(activeItem.fr, slowMode ? 0.72 : 0.95, {
+        onError: (msg) => setAudioError(msg),
+      });
+    } finally {
+      setAudioLoading(false);
+    }
   };
 
   const diffTokens = useMemo(() => {
@@ -227,7 +241,10 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
             [
               {id: 'phrases', label: 'Phrases métier'},
               {id: 'theme', label: 'Mots par thème'},
-              {id: 'erreurs', label: `Mes erreurs (${Object.keys(missedCounts).length})`},
+              {
+                id: 'erreurs',
+                label: `Mes erreurs (${Object.values(missedCounts).filter((c) => c > 0).length})`,
+              },
               {id: 'textes', label: `Mes textes (${customTexts.length})`},
             ] as const
           ).map((s) => {
@@ -238,6 +255,9 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
                 type="button"
                 onClick={() => {
                   void triggerLightHaptic();
+                  if (s.id === 'textes' && !customTarget && customTexts[0]) {
+                    setCustomTarget(customTexts[0].content);
+                  }
                   setSource(s.id);
                   setChecked(false);
                   setAnswer('');
@@ -319,12 +339,13 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
         </div>
       </GlassCard>
 
-      {!speechSupported && (
+      {audioError && (
         <div
+          role="alert"
           className="rounded-[16px] border p-3.5 text-xs font-medium"
           style={{backgroundColor: 'var(--err-bg)', borderColor: 'var(--err)', color: 'var(--tx)'}}
         >
-          La synthèse vocale n’est pas disponible sur ce navigateur. Utilisez l’indice darija ci-dessous pour pratiquer.
+          {audioError}
         </div>
       )}
 
@@ -341,9 +362,14 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <GlassButton variant="primary" size="md" onClick={playAudio}>
+            <GlassButton
+              variant="primary"
+              size="md"
+              disabled={audioLoading}
+              onClick={() => void playAudio()}
+            >
               <Play className="w-4 h-4" />
-              <span>Écouter la dictée</span>
+              <span>{audioLoading ? 'Chargement audio…' : 'Écouter la dictée'}</span>
             </GlassButton>
             <GlassButton
               variant="glass"
@@ -405,7 +431,12 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
               <span>Vérifier</span>
             </GlassButton>
 
-            <GlassButton variant="glass" size="md" onClick={playAudio}>
+            <GlassButton
+              variant="glass"
+              size="md"
+              disabled={audioLoading}
+              onClick={() => void playAudio()}
+            >
               <RotateCw className="w-4 h-4" />
               <span>Répéter</span>
             </GlassButton>
@@ -432,7 +463,8 @@ export const DictationTrainer: React.FC<DictationTrainerProps> = ({
               <GlassButton
                 variant="ghost"
                 size="sm"
-                onClick={() => speakFrench(activeItem.fr, slowMode ? 0.72 : 0.95)}
+                disabled={audioLoading}
+                onClick={() => void playAudio()}
               >
                 <Volume2 className="w-4 h-4" style={{color: 'var(--main)'}} />
                 <span style={{color: 'var(--main)'}}>Réécouter</span>

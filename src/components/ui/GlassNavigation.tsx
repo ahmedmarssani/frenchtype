@@ -98,6 +98,10 @@ export const GlassAppBar: React.FC<GlassAppBarProps> = ({
             }}
             aria-label="Ouvrir les réglages du profil"
             className="lg-press min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full cursor-pointer"
+            style={{
+              boxShadow:
+                activeTab === 'reglages' ? '0 0 0 2.5px var(--main)' : undefined,
+            }}
           >
             <GlassAvatar
               name={userSettings.displayName}
@@ -122,13 +126,14 @@ export const GlassBottomNav: React.FC<GlassBottomNavProps> = ({
   activeTab,
   onSelectTab,
 }) => {
+  const mobileItems = navItems.filter((item) => item.id !== 'reglages').slice(0, 5);
   return (
     <nav
       aria-label="Navigation mobile"
       className="md:hidden fixed bottom-2 left-3 right-3 z-40 pb-safe pointer-events-none"
     >
       <div className="max-w-md mx-auto lg-dock rounded-[26px] p-1.5 grid grid-cols-5 items-center pointer-events-auto">
-        {navItems.map((item) => {
+        {mobileItems.map((item) => {
           const Icon = item.icon;
           const active = activeTab === item.id;
           return (
